@@ -1,0 +1,5 @@
+{
+  "name": "Abhishya AI",
+  "description": "An advanced AI assistant designed to help users with information, problem solving, learning, and business guidance.",
+  "requestFramePermissions": ["microphone"]
+}

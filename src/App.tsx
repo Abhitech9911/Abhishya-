@@ -8,7 +8,7 @@ import {
   Coins, Paperclip, Cloud, ChevronRight,
   Fingerprint, LockOpen, Eye, ShieldAlert,
   MessageSquare, Mic, MicOff,
-  ArrowLeft, Download, Globe, Camera, Edit2, Check, X
+  ArrowLeft, Download, Globe, Camera, Edit2, Check, X, Menu
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
@@ -68,55 +68,65 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('splash');
   const [chatMode, setChatMode] = useState<ChatMode>('standard');
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
-  const [messagesByMode, setMessagesByMode] = useState<Record<ChatMode, Message[]>>({
-    standard: [
-      {
-        id: 'std-1',
-        role: 'assistant',
-        content: 'Hello, I am Abhishya AI. How can I assist you today?',
-        timestamp: Date.now(),
-      },
-    ],
-    friend: [
-      {
-        id: 'fr-1',
-        role: 'assistant',
-        content: 'Hey! Main Abhishya AI hoon. Kya haal hai yaar? Aaj kya explore karna chahte ho?',
-        timestamp: Date.now(),
-      },
-    ],
-    mixed: [
-      {
-        id: 'mx-1',
-        role: 'assistant',
-        content: 'Advanced Neural Uplink established. Mixed tools online. I am ready to assist with search, generation, and complex analysis. What is our objective?',
-        timestamp: Date.now(),
-      },
-    ],
-    coding: [
-      {
-        id: 'cd-1',
-        role: 'assistant',
-        content: 'DevOps Module Online. I am ready to assist with code analysis, debugging, and architectural patterns. What are we building today?',
-        timestamp: Date.now(),
-      },
-    ],
-    business: [
-      {
-        id: 'bs-1',
-        role: 'assistant',
-        content: 'Strategic Intelligence Module Active. Market synthesis and growth simulations ready. What is your business objective?',
-        timestamp: Date.now(),
-      },
-    ],
-    study: [
-      {
-        id: 'st-1',
-        role: 'assistant',
-        content: 'Learning Hub established. I am ready to help you extract knowledge and master new subjects. What shall we learn today?',
-        timestamp: Date.now(),
-      },
-    ],
+  const [messagesByMode, setMessagesByMode] = useState<Record<ChatMode, Message[]>>(() => {
+    const saved = localStorage.getItem('abhishya_messages_by_mode');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error("Failed to parse saved messages", e);
+      }
+    }
+    return {
+      standard: [
+        {
+          id: 'std-1',
+          role: 'assistant',
+          content: 'Hello, I am Abhishya AI. How can I assist you today?',
+          timestamp: Date.now(),
+        },
+      ],
+      friend: [
+        {
+          id: 'fr-1',
+          role: 'assistant',
+          content: 'Hey! Main Abhishya AI hoon. Kya haal hai yaar? Aaj kya explore karna chahte ho?',
+          timestamp: Date.now(),
+        },
+      ],
+      mixed: [
+        {
+          id: 'mx-1',
+          role: 'assistant',
+          content: 'Advanced Neural Uplink established. Mixed tools online. I am ready to assist with search, generation, and complex analysis. What is our objective?',
+          timestamp: Date.now(),
+        },
+      ],
+      coding: [
+        {
+          id: 'cd-1',
+          role: 'assistant',
+          content: 'DevOps Module Online. I am ready to assist with code analysis, debugging, and architectural patterns. What are we building today?',
+          timestamp: Date.now(),
+        },
+      ],
+      business: [
+        {
+          id: 'bs-1',
+          role: 'assistant',
+          content: 'Strategic Intelligence Module Active. Market synthesis and growth simulations ready. What is your business objective?',
+          timestamp: Date.now(),
+        },
+      ],
+      study: [
+        {
+          id: 'st-1',
+          role: 'assistant',
+          content: 'Learning Hub established. I am ready to help you extract knowledge and master new subjects. What shall we learn today?',
+          timestamp: Date.now(),
+        },
+      ],
+    };
   });
 
   const [theme, setTheme] = useState<'SYSTEM' | 'DARK' | 'LIGHT'>(() => (localStorage.getItem('abhishya_theme') as any) || 'DARK');
@@ -129,7 +139,14 @@ export default function App() {
   const [userAvatar, setUserAvatar] = useState(() => localStorage.getItem('abhishya_user_avatar') || 'https://picsum.photos/seed/commander/200/200');
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState(userName);
+  useEffect(() => {
+    if (chatHistory) {
+      localStorage.setItem('abhishya_messages_by_mode', JSON.stringify(messagesByMode));
+    }
+  }, [messagesByMode, chatHistory]);
+
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeSettingsTab, setActiveSettingsTab] = useState<'general' | 'personalization' | 'speech' | 'data'>('general');
   const profilePicInputRef = useRef<HTMLInputElement>(null);
 
@@ -599,6 +616,8 @@ export default function App() {
               fileInputRef={fileInputRef}
               startListening={startListening}
               isListening={isListening}
+              isMobileMenuOpen={isMobileMenuOpen}
+              setIsMobileMenuOpen={setIsMobileMenuOpen}
             />
           </motion.div>
         )}
@@ -717,6 +736,8 @@ interface HomeScreenProps {
   fileInputRef: React.RefObject<HTMLInputElement>;
   startListening: (onResult?: (text: string) => void) => void;
   isListening: boolean;
+  isMobileMenuOpen: boolean;
+  setIsMobileMenuOpen: (open: boolean) => void;
 }
 
 const HomeScreen = ({
@@ -730,23 +751,25 @@ const HomeScreen = ({
   setPendingMessage,
   fileInputRef,
   startListening,
-  isListening
+  isListening,
+  isMobileMenuOpen,
+  setIsMobileMenuOpen
 }: HomeScreenProps) => (
   <div className="relative min-h-screen flex flex-col overflow-x-hidden bg-background-light dark:bg-background-dark transition-colors duration-300">
     <div className="absolute inset-0 scanline pointer-events-none opacity-20"></div>
-    <header className="sticky top-0 z-50 backdrop-blur-md border-b border-primary/20 dark:border-cyber-green/20 bg-white/80 dark:bg-background-dark/80 px-6 lg:px-12 py-4">
+    <header className="sticky top-0 z-50 backdrop-blur-md border-b border-primary/20 dark:border-cyber-green/20 bg-white/80 dark:bg-background-dark/80 px-4 md:px-6 lg:px-12 py-3 md:py-4">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="size-10 rounded-lg bg-gradient-to-br from-primary to-cyber-green p-[2px] hud-glow-green">
+        <div className="flex items-center gap-2 md:gap-3">
+          <div className="size-8 md:size-10 rounded-lg bg-gradient-to-br from-primary to-cyber-green p-[2px] hud-glow-green">
             <div className="w-full h-full bg-white dark:bg-background-dark rounded-[7px] flex items-center justify-center">
-              <Bolt className="text-primary dark:text-cyber-green" size={24} />
+              <Bolt className="text-primary dark:text-cyber-green" size={18} />
             </div>
           </div>
           <div className="flex flex-col">
-            <h1 className="text-xl font-bold tracking-tighter text-slate-900 dark:text-cyber-green flex items-center gap-2 uppercase">
+            <h1 className="text-lg md:text-xl font-bold tracking-tighter text-slate-900 dark:text-cyber-green flex items-center gap-2 uppercase">
               Abhishya <span className="text-primary italic">AI</span>
             </h1>
-            <span className="text-[10px] text-slate-500 dark:text-cyber-green/60 font-mono tracking-widest uppercase">Command Center v4.0.2</span>
+            <span className="text-[8px] md:text-[10px] text-slate-500 dark:text-cyber-green/60 font-mono tracking-widest uppercase hidden xs:block">Command Center v4.0.2</span>
           </div>
         </div>
         <nav className="hidden md:flex items-center gap-8">
@@ -755,11 +778,17 @@ const HomeScreen = ({
           <button onClick={() => setCurrentScreen('history')} className="text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-cyber-green/60 hover:text-primary dark:hover:text-cyber-green transition-colors">Archives</button>
           <button onClick={() => setCurrentScreen('settings')} className="text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-cyber-green/60 hover:text-primary dark:hover:text-cyber-green transition-colors">Settings</button>
         </nav>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 md:gap-4">
+          <button 
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="md:hidden p-2 text-slate-600 dark:text-cyber-green/60 hover:text-primary dark:hover:text-cyber-green transition-colors"
+          >
+            {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
           <button className="size-10 flex items-center justify-center rounded-full border border-primary/30 dark:border-cyber-green/30 text-primary dark:text-cyber-green hover:bg-primary/10 dark:hover:bg-cyber-green/10 transition-all">
             <Bell size={20} />
           </button>
-          <div className="h-10 w-[1px] bg-primary/20 dark:bg-cyber-green/20 mx-2"></div>
+          <div className="h-10 w-[1px] bg-primary/20 dark:bg-cyber-green/20 mx-2 hidden md:block"></div>
           <div 
             onClick={() => setIsProfileModalOpen(true)}
             className="flex items-center gap-3 bg-slate-100 dark:bg-panel-dark/50 p-1 pr-4 rounded-full border border-primary/20 dark:border-cyber-green/20 cursor-pointer hover:bg-slate-200 dark:hover:bg-panel-dark/80 transition-all group"
@@ -771,32 +800,65 @@ const HomeScreen = ({
           </div>
         </div>
       </div>
+
+      {/* Mobile Menu Overlay */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="md:hidden overflow-hidden border-t border-primary/10 dark:border-cyber-green/10 mt-3"
+          >
+            <div className="flex flex-col gap-4 py-4">
+              <button 
+                onClick={() => { setCurrentScreen('home'); setIsMobileMenuOpen(false); }} 
+                className="flex items-center gap-3 px-2 py-1 text-slate-600 dark:text-cyber-green/60 hover:text-primary dark:hover:text-cyber-green transition-colors text-sm font-bold uppercase tracking-widest font-mono"
+              >
+                <Home className="w-4 h-4" /> Dashboard
+              </button>
+              <button 
+                onClick={() => { setCurrentScreen('history'); setIsMobileMenuOpen(false); }} 
+                className="flex items-center gap-3 px-2 py-1 text-slate-600 dark:text-cyber-green/60 hover:text-primary dark:hover:text-cyber-green transition-colors text-sm font-bold uppercase tracking-widest font-mono"
+              >
+                <History className="w-4 h-4" /> Neural Assets
+              </button>
+              <button 
+                onClick={() => { setCurrentScreen('settings'); setIsMobileMenuOpen(false); }} 
+                className="flex items-center gap-3 px-2 py-1 text-slate-600 dark:text-cyber-green/60 hover:text-primary dark:hover:text-cyber-green transition-colors text-sm font-bold uppercase tracking-widest font-mono"
+              >
+                <Settings className="w-4 h-4" /> Settings
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </header>
     <main className="flex-grow flex flex-col p-6 lg:p-12 max-w-7xl mx-auto w-full gap-8 z-10">
-      <section className="flex flex-col gap-2 border-l-4 border-primary dark:border-cyber-green pl-6 py-2">
+      <section className="flex flex-col gap-2 border-l-4 border-primary dark:border-cyber-green pl-4 md:pl-6 py-2">
         <div className="flex items-center gap-2">
           <span className="flex size-2 rounded-full bg-primary dark:bg-cyber-green animate-pulse"></span>
-          <p className="text-[10px] font-mono text-primary dark:text-cyber-green uppercase tracking-[0.3em]">Neural Link: Stable</p>
+          <p className="text-[9px] md:text-[10px] font-mono text-primary dark:text-cyber-green uppercase tracking-[0.3em]">Neural Link: Stable</p>
         </div>
-        <h2 className="text-4xl md:text-6xl font-bold tracking-tight text-slate-900 dark:text-cyber-green uppercase italic">
-          Superhuman Intelligence <br />
+        <h2 className="text-3xl md:text-6xl font-bold tracking-tight text-slate-900 dark:text-cyber-green uppercase italic leading-tight">
+          Superhuman Intelligence <br className="hidden md:block" />
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-cyber-green">at your command</span>
         </h2>
       </section>
 
       {/* Direct Chat Input */}
-      <div className="relative group max-w-3xl">
+      <div className="relative group max-w-3xl w-full">
         <div className="absolute -inset-1 bg-gradient-to-r from-primary to-primary/50 dark:to-cyber-green/50 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
-        <div className="relative bg-white/80 dark:bg-panel-dark/80 hud-border rounded-xl p-2 flex items-center gap-3">
-          <div className="pl-3 text-primary">
-            <Terminal size={20} />
+        <div className="relative bg-white/80 dark:bg-panel-dark/80 hud-border rounded-xl p-1.5 md:p-2 flex items-center gap-1 md:gap-3">
+          <div className="pl-2 md:pl-3 text-primary shrink-0">
+            <Terminal size={18} />
           </div>
           <input 
             type="text" 
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="INITIALIZE DIRECT NEURAL COMMAND..." 
-            className="bg-transparent border-none focus:outline-none text-slate-900 dark:text-white w-full font-mono text-sm py-3"
+            placeholder="INITIALIZE COMMAND..." 
+            className="bg-transparent border-none focus:outline-none text-slate-900 dark:text-white w-full font-mono text-xs md:text-sm py-2 md:py-3"
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 if (input.trim()) {
@@ -808,40 +870,42 @@ const HomeScreen = ({
               }
             }}
           />
-          <button 
-            onClick={() => fileInputRef.current?.click()}
-            className="p-3 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 transition-all"
-            title="Upload File"
-          >
-            <Paperclip size={20} />
-          </button>
-          <button 
-            onClick={() => startListening((text) => {
-              setChatMode('standard');
-              setPendingMessage(text);
-              setCurrentScreen('chat');
-            })}
-            className={cn(
-              "p-3 rounded-lg transition-all",
-              isListening ? "bg-red-500/20 text-red-500 animate-pulse" : "bg-primary/10 dark:bg-cyber-green/10 hover:bg-primary/20 dark:hover:bg-cyber-green/20 text-primary dark:text-cyber-green"
-            )}
-            title="Voice Command"
-          >
-            <Mic size={20} />
-          </button>
-          <button 
-            onClick={() => {
-              if (input.trim()) {
+          <div className="flex items-center gap-1">
+            <button 
+              onClick={() => fileInputRef.current?.click()}
+              className="p-2 md:p-3 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 transition-all shrink-0"
+              title="Upload File"
+            >
+              <Paperclip size={18} />
+            </button>
+            <button 
+              onClick={() => startListening((text) => {
                 setChatMode('standard');
-                setPendingMessage(input);
+                setPendingMessage(text);
                 setCurrentScreen('chat');
-                setInput('');
-              }
-            }}
-            className="bg-primary/10 dark:bg-cyber-green/10 hover:bg-primary/20 dark:hover:bg-cyber-green/20 text-primary dark:text-cyber-green p-3 rounded-lg transition-all active:scale-95"
-          >
-            <ChevronRight size={20} />
-          </button>
+              })}
+              className={cn(
+                "p-2 md:p-3 rounded-lg transition-all shrink-0",
+                isListening ? "bg-red-500/20 text-red-500 animate-pulse" : "bg-primary/10 dark:bg-cyber-green/10 hover:bg-primary/20 dark:hover:bg-cyber-green/20 text-primary dark:text-cyber-green"
+              )}
+              title="Voice Command"
+            >
+              <Mic size={18} />
+            </button>
+            <button 
+              onClick={() => {
+                if (input.trim()) {
+                  setChatMode('standard');
+                  setPendingMessage(input);
+                  setCurrentScreen('chat');
+                  setInput('');
+                }
+              }}
+              className="bg-primary/10 dark:bg-cyber-green/10 hover:bg-primary/20 dark:hover:bg-cyber-green/20 text-primary dark:text-cyber-green p-2 md:p-3 rounded-lg transition-all active:scale-95 shrink-0"
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -949,52 +1013,55 @@ const ChatScreen = ({
 }: ChatScreenProps) => (
   <div className="relative min-h-screen flex flex-col overflow-x-hidden bg-background-light dark:bg-background-dark transition-colors duration-300">
       <div className="absolute inset-0 scanline pointer-events-none opacity-5"></div>
-      <header className="flex items-center justify-between border-b border-primary/20 dark:border-cyber-green/20 bg-white/80 dark:bg-black/60 backdrop-blur-md px-6 py-4 z-10">
-        <div className="flex items-center gap-4">
-          <button onClick={() => setCurrentScreen('home')} className="p-2 bg-primary/10 dark:bg-cyber-green/10 rounded-lg border border-primary/20 dark:border-cyber-green/20">
-            <ArrowLeft className="text-primary dark:text-cyber-green" size={24} />
+      <header className="flex items-center justify-between border-b border-primary/20 dark:border-cyber-green/20 bg-white/80 dark:bg-black/60 backdrop-blur-md px-4 md:px-6 py-3 md:py-4 z-10">
+        <div className="flex items-center gap-2 md:gap-4">
+          <button onClick={() => setCurrentScreen('home')} className="p-1.5 md:p-2 bg-primary/10 dark:bg-cyber-green/10 rounded-lg border border-primary/20 dark:border-cyber-green/20">
+            <ArrowLeft className="text-primary dark:text-cyber-green w-5 h-5 md:w-6 md:h-6" />
           </button>
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-cyber-green uppercase tracking-widest">Abhishya <span className="text-primary">AI</span></h1>
-            <div className="flex items-center gap-2">
+            <h1 className="text-sm md:text-xl font-bold tracking-tight text-slate-900 dark:text-cyber-green uppercase tracking-widest">Abhishya <span className="text-primary">AI</span></h1>
+            <div className="flex items-center gap-1.5 md:gap-2">
               <span className={cn(
-                "size-2 rounded-full animate-pulse shadow-[0_0_10px_currentColor]", 
+                "size-1.5 md:size-2 rounded-full animate-pulse shadow-[0_0_10px_currentColor]", 
                 chatMode === 'friend' ? "bg-indigo-500" : 
                 chatMode === 'mixed' ? "bg-emerald-500" :
                 chatMode === 'coding' ? "bg-primary" :
                 chatMode === 'business' ? "bg-slate-400 dark:bg-slate-500" :
                 chatMode === 'study' ? "bg-primary dark:bg-cyber-green" : "bg-cyber-green"
               )}></span>
-              <p className="text-[10px] text-slate-600 dark:text-cyber-green/60 font-mono tracking-[0.2em] uppercase">
-                {chatMode === 'friend' ? 'Friend Mode Active' : 
-                 chatMode === 'mixed' ? 'Mixed Tools Active' :
-                 chatMode === 'coding' ? 'DevOps Mode Active' :
-                 chatMode === 'business' ? 'Strategy Mode Active' :
-                 chatMode === 'study' ? 'Learning Hub Active' : 'Neural Link Active'}
+              <p className="text-[8px] md:text-[10px] text-slate-600 dark:text-cyber-green/60 font-mono tracking-[0.1em] md:tracking-[0.2em] uppercase truncate max-w-[80px] md:max-w-none">
+                {chatMode === 'friend' ? 'Friend' : 
+                 chatMode === 'mixed' ? 'Mixed' :
+                 chatMode === 'coding' ? 'Coding' :
+                 chatMode === 'business' ? 'Strategy' :
+                 chatMode === 'study' ? 'Learning' : 'Active'}
               </p>
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5 md:gap-3">
+          <button onClick={() => setCurrentScreen('history')} className="p-1.5 md:p-2 text-slate-600 dark:text-cyber-green/60 hover:text-primary dark:hover:text-cyber-green transition-colors">
+            <History className="w-[18px] h-[18px] md:w-5 md:h-5" />
+          </button>
           {(chatMode === 'standard' || chatMode === 'friend') && (
             <button 
               onClick={() => setChatMode(prev => prev === 'standard' ? 'friend' : 'standard')}
               className={cn(
-                "flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all text-[10px] font-bold uppercase tracking-widest font-mono",
+                "flex items-center gap-1 md:gap-2 px-2 md:px-3 py-1 md:py-1.5 rounded-full border transition-all text-[8px] md:text-[10px] font-bold uppercase tracking-widest font-mono",
                 chatMode === 'friend' 
                   ? "bg-accent-blue/20 border-accent-blue text-accent-blue shadow-[0_0_10px_rgba(0,210,255,0.3)]" 
                   : "bg-slate-100 dark:bg-cyber-green/5 border-slate-200 dark:border-cyber-green/20 text-slate-600 dark:text-cyber-green/80"
               )}
             >
-              {chatMode === 'friend' ? <Mic size={14} /> : <MessageSquare size={14} />}
-              <span>{chatMode === 'friend' ? 'Friend' : 'Standard'}</span>
+              {chatMode === 'friend' ? <Mic size={12} /> : <MessageSquare size={12} />}
+              <span className="hidden xs:inline">{chatMode === 'friend' ? 'Friend' : 'Standard'}</span>
             </button>
           )}
-          <button onClick={clearChat} className="p-2 text-slate-600 dark:text-cyber-green/60 hover:text-primary dark:hover:text-cyber-green transition-colors">
-            <Trash2 size={20} />
+          <button onClick={clearChat} className="p-1.5 md:p-2 text-slate-600 dark:text-cyber-green/60 hover:text-primary dark:hover:text-cyber-green transition-colors">
+            <Trash2 className="w-[18px] h-[18px] md:w-5 md:h-5" />
           </button>
-          <button onClick={() => setCurrentScreen('settings')} className="p-2 text-slate-600 dark:text-cyber-green/60 hover:text-primary dark:hover:text-cyber-green transition-colors">
-            <Settings size={20} />
+          <button onClick={() => setCurrentScreen('settings')} className="p-1.5 md:p-2 text-slate-600 dark:text-cyber-green/60 hover:text-primary dark:hover:text-cyber-green transition-colors">
+            <Settings className="w-[18px] h-[18px] md:w-5 md:h-5" />
           </button>
         </div>
       </header>
@@ -1033,7 +1100,7 @@ const ChatScreen = ({
                     </span>
                   </div>
                   <div className={cn(
-                    "p-4 rounded-xl border backdrop-blur-md max-w-2xl",
+                    "p-3 md:p-4 rounded-xl border backdrop-blur-md max-w-[85%] md:max-w-2xl",
                     message.role === 'user' 
                       ? "bg-primary/5 dark:bg-cyber-green/5 border-primary/30 dark:border-cyber-green/30 rounded-tr-none" 
                       : "bg-white/90 dark:bg-black/80 border-slate-200 dark:border-cyber-green/20 rounded-tl-none border-l-2 border-l-primary dark:border-l-cyber-green"
@@ -1100,11 +1167,11 @@ const ChatScreen = ({
         </div>
       </main>
 
-      <footer className="p-6 bg-white/90 dark:bg-background-dark/90 border-t border-primary/20 dark:border-cyber-green/20">
+      <footer className="p-3 md:p-6 bg-white/90 dark:bg-background-dark/90 border-t border-primary/20 dark:border-cyber-green/20">
         <div className="max-w-4xl mx-auto">
           {/* Quick Replies */}
           {!isLoading && (
-            <div className="mb-4 flex flex-wrap gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            <div className="mb-3 md:mb-4 flex flex-wrap gap-1.5 md:gap-2 overflow-x-auto pb-2 scrollbar-hide">
               {(suggestions.length > 0 ? suggestions : QUICK_REPLIES[chatMode]).map((reply, idx) => (
                 <motion.button
                   key={`quick-reply-${idx}`}
@@ -1112,7 +1179,7 @@ const ChatScreen = ({
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: idx * 0.05 }}
                   onClick={() => handleSend(reply)}
-                  className="whitespace-nowrap px-4 py-2 rounded-full bg-primary/5 dark:bg-cyber-green/5 border border-primary/20 dark:border-cyber-green/20 text-[10px] font-bold text-primary dark:text-cyber-green uppercase tracking-widest hover:bg-primary/10 dark:hover:bg-cyber-green/10 hover:border-primary/40 dark:hover:border-cyber-green/40 transition-all font-mono shadow-[0_0_10px_rgba(0,255,65,0.1)]"
+                  className="whitespace-nowrap px-3 md:px-4 py-1.5 md:py-2 rounded-full bg-primary/5 dark:bg-cyber-green/5 border border-primary/20 dark:border-cyber-green/20 text-[8px] md:text-[10px] font-bold text-primary dark:text-cyber-green uppercase tracking-widest hover:bg-primary/10 dark:hover:bg-cyber-green/10 hover:border-primary/40 dark:hover:border-cyber-green/40 transition-all font-mono shadow-[0_0_10px_rgba(0,255,65,0.1)]"
                 >
                   {reply}
                 </motion.button>
@@ -1121,19 +1188,19 @@ const ChatScreen = ({
           )}
 
           {selectedFile && (
-            <div className="mb-4 p-2 bg-slate-100 dark:bg-cyber-green/5 border border-slate-200 dark:border-cyber-green/30 rounded-xl flex items-center gap-3 animate-in slide-in-from-bottom-2">
+            <div className="mb-3 md:mb-4 p-2 bg-slate-100 dark:bg-cyber-green/5 border border-slate-200 dark:border-cyber-green/30 rounded-xl flex items-center gap-3 animate-in slide-in-from-bottom-2">
               {selectedFile.file.type.startsWith('image/') ? (
-                <div className="size-12 rounded-lg overflow-hidden border border-white/10 dark:border-cyber-green/20">
+                <div className="size-10 md:size-12 rounded-lg overflow-hidden border border-white/10 dark:border-cyber-green/20">
                   <img src={selectedFile.preview} alt="preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 </div>
               ) : (
-                <div className="size-12 rounded-lg bg-primary/10 dark:bg-cyber-green/10 flex items-center justify-center text-primary dark:text-cyber-green">
-                  <Paperclip size={20} />
+                <div className="size-10 md:size-12 rounded-lg bg-primary/10 dark:bg-cyber-green/10 flex items-center justify-center text-primary dark:text-cyber-green">
+                  <Paperclip size={18} />
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-slate-800 dark:text-cyber-green truncate uppercase tracking-wider font-mono">{selectedFile.file.name}</p>
-                <p className="text-[10px] text-slate-500 dark:text-cyber-green/60 uppercase font-mono">{(selectedFile.file.size / 1024).toFixed(1)} KB</p>
+                <p className="text-[10px] md:text-xs font-bold text-slate-800 dark:text-cyber-green truncate uppercase tracking-wider font-mono">{selectedFile.file.name}</p>
+                <p className="text-[8px] md:text-[10px] text-slate-500 dark:text-cyber-green/60 uppercase font-mono">{(selectedFile.file.size / 1024).toFixed(1)} KB</p>
               </div>
               <button 
                 onClick={removeSelectedFile}
@@ -1143,13 +1210,13 @@ const ChatScreen = ({
               </button>
             </div>
           )}
-          <div className="flex items-center gap-4">
-            <button className="size-12 rounded-full border-2 border-primary/40 dark:border-cyber-green/40 bg-primary/5 dark:bg-cyber-green/5 flex items-center justify-center text-primary dark:text-cyber-green hover:bg-primary/20 dark:hover:bg-cyber-green/20 transition-all shrink-0">
-              <Coins size={24} />
+          <div className="flex items-center gap-2 md:gap-4">
+            <button className="size-10 md:size-12 rounded-full border-2 border-primary/40 dark:border-cyber-green/40 bg-primary/5 dark:bg-cyber-green/5 flex items-center justify-center text-primary dark:text-cyber-green hover:bg-primary/20 dark:hover:bg-cyber-green/20 transition-all shrink-0">
+              <Coins className="w-5 h-5 md:w-6 md:h-6" />
             </button>
             <div className="relative flex-1">
-              <div className="absolute inset-y-0 left-4 flex items-center">
-                <Terminal size={20} className="text-slate-500 dark:text-cyber-green/40" />
+              <div className="absolute inset-y-0 left-3 md:left-4 flex items-center">
+                <Terminal className="text-slate-500 dark:text-cyber-green/40 w-4 h-4 md:w-5 md:h-5" />
               </div>
               <textarea 
                 ref={chatInputRef}
@@ -1162,34 +1229,34 @@ const ChatScreen = ({
                   }
                 }}
                 rows={1}
-                className="w-full bg-slate-100 dark:bg-black/60 border border-slate-200 dark:border-cyber-green/30 rounded-xl py-4 pl-12 pr-24 text-slate-900 dark:text-cyber-green placeholder:text-slate-600 dark:placeholder:text-cyber-green/30 focus:outline-none focus:ring-1 focus:ring-primary/50 dark:focus:ring-cyber-green/50 focus:border-primary/60 dark:focus:border-cyber-green/60 text-sm font-mono resize-none" 
-                placeholder="EXECUTE COMMAND..." 
+                className="w-full bg-slate-100 dark:bg-black/60 border border-slate-200 dark:border-cyber-green/30 rounded-xl py-3 md:py-4 pl-10 md:pl-12 pr-16 md:pr-24 text-slate-900 dark:text-cyber-green placeholder:text-slate-600 dark:placeholder:text-cyber-green/30 focus:outline-none focus:ring-1 focus:ring-primary/50 dark:focus:ring-cyber-green/50 focus:border-primary/60 dark:focus:border-cyber-green/60 text-xs md:text-sm font-mono resize-none" 
+                placeholder="COMMAND..." 
                 onInput={(e) => {
                   const target = e.target as HTMLTextAreaElement;
                   target.style.height = 'auto';
                   target.style.height = `${target.scrollHeight}px`;
                 }}
               />
-              <div className="absolute inset-y-0 right-2 flex items-center gap-1">
+              <div className="absolute inset-y-0 right-1.5 md:right-2 flex items-center gap-0.5 md:gap-1">
                 <button 
                   onClick={() => startListening()}
                   className={cn(
-                    "p-2 transition-colors",
+                    "p-1.5 md:p-2 transition-colors",
                     isListening ? "text-red-500 animate-pulse" : "text-slate-500 hover:text-primary"
                   )}
                   title="Voice Input"
                 >
-                  <Mic size={18} />
+                  <Mic className="w-4 h-4 md:w-[18px] md:h-[18px]" />
                 </button>
-                <button className="p-2 text-slate-500 hover:text-primary transition-colors">
-                  <Cloud size={18} />
+                <button className="p-1.5 md:p-2 text-slate-500 hover:text-primary transition-colors hidden xs:block">
+                  <Cloud className="w-4 h-4 md:w-[18px] md:h-[18px]" />
                 </button>
                 <button 
                   onClick={() => fileInputRef.current?.click()}
-                  className="p-2 text-slate-500 hover:text-primary dark:hover:text-cyber-green transition-colors"
+                  className="p-1.5 md:p-2 text-slate-500 hover:text-primary dark:hover:text-cyber-green transition-colors"
                   title="Attach File"
                 >
-                  <Paperclip size={18} />
+                  <Paperclip className="w-4 h-4 md:w-[18px] md:h-[18px]" />
                 </button>
               </div>
             </div>
@@ -1197,10 +1264,10 @@ const ChatScreen = ({
               onClick={() => handleSend()}
               title="Send Message"
               disabled={(!input.trim() && !selectedFile) || isLoading}
-              className="bg-primary dark:bg-cyber-green hover:bg-primary/80 dark:hover:bg-cyber-green/80 disabled:opacity-50 disabled:cursor-not-allowed text-white dark:text-black flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold uppercase tracking-widest text-xs transition-all shadow-[0_0_20px_rgba(236,91,19,0.4)] dark:shadow-[0_0_20px_rgba(0,255,65,0.4)] group active:scale-95"
+              className="bg-primary dark:bg-cyber-green hover:bg-primary/80 dark:hover:bg-cyber-green/80 disabled:opacity-50 disabled:cursor-not-allowed text-white dark:text-black flex items-center justify-center gap-1.5 md:gap-2 px-4 md:px-6 py-2.5 md:py-3 rounded-xl font-bold uppercase tracking-widest text-[10px] md:text-xs transition-all shadow-[0_0_20px_rgba(236,91,19,0.4)] dark:shadow-[0_0_20px_rgba(0,255,65,0.4)] group active:scale-95 shrink-0"
             >
-              <span>Transmit</span>
-              <Bolt size={18} className="group-hover:translate-x-1 transition-transform" />
+              <span className="hidden sm:inline">Transmit</span>
+              <Bolt className="group-hover:translate-x-1 transition-transform w-4 h-4 md:w-[18px] md:h-[18px]" />
             </button>
           </div>
         </div>
@@ -1212,46 +1279,46 @@ const HistoryScreen = ({ setCurrentScreen, messages }: HistoryScreenProps) => (
   <div className="relative min-h-screen overflow-x-hidden bg-background-light dark:bg-background-dark transition-colors duration-300 tech-grid">
       <div className="absolute inset-0 scanline pointer-events-none opacity-10"></div>
       <div className="layout-container flex h-full grow flex-col max-w-5xl mx-auto px-4 md:px-10 z-10">
-        <header className="flex items-center justify-between py-8 border-b border-primary/20 dark:border-cyber-green/20">
-          <div className="flex items-center gap-6">
-            <button onClick={() => setCurrentScreen('home')} className="group flex items-center justify-center size-12 rounded-full bg-primary/10 dark:bg-cyber-green/10 border border-primary/40 dark:border-cyber-green/40 hover:bg-primary/20 dark:hover:bg-cyber-green/20 transition-all duration-300 shadow-[0_0_15px_rgba(0,255,65,0.2)]">
-              <ArrowLeft className="text-primary dark:text-cyber-green" size={24} />
+        <header className="flex items-center justify-between py-4 md:py-8 border-b border-primary/20 dark:border-cyber-green/20">
+          <div className="flex items-center gap-3 md:gap-6">
+            <button onClick={() => setCurrentScreen('home')} className="group flex items-center justify-center size-10 md:size-12 rounded-full bg-primary/10 dark:bg-cyber-green/10 border border-primary/40 dark:border-cyber-green/40 hover:bg-primary/20 dark:hover:bg-cyber-green/20 transition-all duration-300 shadow-[0_0_15px_rgba(0,255,65,0.2)]">
+              <ArrowLeft className="text-primary dark:text-cyber-green w-5 h-5 md:w-6 md:h-6" />
             </button>
             <div className="flex flex-col">
-              <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-cyber-green uppercase italic">Neural Archives</h2>
-              <p className="text-primary/70 dark:text-cyber-green/60 text-[10px] font-bold uppercase tracking-[0.3em]">Secure Data Vault // Abhishya AI</p>
+              <h2 className="text-xl md:text-3xl font-bold tracking-tight text-slate-900 dark:text-cyber-green uppercase italic">Neural Archives</h2>
+              <p className="text-primary/70 dark:text-cyber-green/60 text-[8px] md:text-[10px] font-bold uppercase tracking-[0.2em] md:tracking-[0.3em]">Secure Data Vault // Abhishya AI</p>
             </div>
           </div>
         </header>
-        <main className="py-10 space-y-6">
-          <div className="grid gap-6">
+        <main className="py-6 md:py-10 space-y-4 md:space-y-6">
+          <div className="grid gap-4 md:gap-6">
             {messages.length <= 1 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-slate-500 dark:text-cyber-green/20">
-                <History size={48} className="opacity-20 mb-4" />
-                <p className="text-xs uppercase tracking-[0.3em] font-bold font-mono">No active logs found in this sector</p>
+              <div className="flex flex-col items-center justify-center py-12 md:py-20 text-slate-500 dark:text-cyber-green/20">
+                <History className="opacity-20 mb-4 w-8 h-8 md:w-12 md:h-12" />
+                <p className="text-[10px] md:text-xs uppercase tracking-[0.2em] md:tracking-[0.3em] font-bold font-mono text-center">No active logs found in this sector</p>
               </div>
             ) : (
               messages.filter(m => m.role === 'user').map((item) => (
-                <div key={item.id} className="group relative flex flex-col md:flex-row items-center gap-6 p-6 rounded-2xl bg-white/40 dark:bg-black/60 border border-slate-200 dark:border-cyber-green/20 hover:border-primary/50 dark:hover:border-cyber-green/50 hover:bg-white/60 dark:hover:bg-black/80 transition-all duration-500 overflow-hidden">
-                  <div className="relative z-10 w-full md:w-48 aspect-video rounded-lg overflow-hidden border border-slate-200 dark:border-cyber-green/20 bg-slate-100 dark:bg-black/50 flex items-center justify-center">
+                <div key={item.id} className="group relative flex flex-col md:flex-row items-center gap-4 md:gap-6 p-4 md:p-6 rounded-2xl bg-white/40 dark:bg-black/60 border border-slate-200 dark:border-cyber-green/20 hover:border-primary/50 dark:hover:border-cyber-green/50 hover:bg-white/60 dark:hover:bg-black/80 transition-all duration-500 overflow-hidden">
+                  <div className="relative z-10 w-full md:w-48 aspect-video rounded-lg overflow-hidden border border-slate-200 dark:border-cyber-green/20 bg-slate-100 dark:bg-black/50 flex items-center justify-center shrink-0">
                     {item.image ? (
                       <img src={item.image} className="w-full h-full object-cover opacity-50 group-hover:opacity-80 transition-opacity" />
                     ) : (
-                      <Activity size={48} className="text-primary/20 dark:text-cyber-green/20" />
+                      <Activity className="text-primary/20 dark:text-cyber-green/20 w-8 h-8 md:w-12 md:h-12" />
                     )}
                   </div>
-                  <div className="relative z-10 flex-1 space-y-2">
+                  <div className="relative z-10 flex-1 space-y-1 md:space-y-2 w-full">
                     <div className="flex justify-between items-start">
-                      <span className="text-[10px] font-bold text-primary/60 dark:text-cyber-green/60 tracking-[0.2em] uppercase font-mono">Log ID: #{item.id.slice(-6)}</span>
-                      <span className="text-[10px] text-slate-500 dark:text-cyber-green/40 font-mono uppercase">{new Date(item.timestamp).toLocaleTimeString()}</span>
+                      <span className="text-[8px] md:text-[10px] font-bold text-primary/60 dark:text-cyber-green/60 tracking-[0.2em] uppercase font-mono">Log ID: #{item.id.slice(-6)}</span>
+                      <span className="text-[8px] md:text-[10px] text-slate-500 dark:text-cyber-green/40 font-mono uppercase">{new Date(item.timestamp).toLocaleTimeString()}</span>
                     </div>
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-cyber-green group-hover:text-primary dark:group-hover:text-cyber-green transition-colors truncate max-w-md uppercase tracking-tight">{item.content}</h3>
-                    <p className="text-slate-600 dark:text-cyber-green/60 text-xs leading-relaxed max-w-xl line-clamp-2 font-mono">
+                    <h3 className="text-sm md:text-lg font-bold text-slate-900 dark:text-cyber-green group-hover:text-primary dark:group-hover:text-cyber-green transition-colors truncate max-w-md uppercase tracking-tight">{item.content}</h3>
+                    <p className="text-slate-600 dark:text-cyber-green/60 text-[10px] md:text-xs leading-relaxed max-w-xl line-clamp-2 font-mono">
                       {messages[messages.findIndex(m => m.id === item.id) + 1]?.content || 'Awaiting response...'}
                     </p>
                   </div>
-                  <button onClick={() => setCurrentScreen('chat')} className="relative z-10 flex items-center justify-center size-12 rounded-xl bg-primary dark:bg-cyber-green text-white dark:text-black hover:scale-110 transition-transform shadow-[0_0_20px_rgba(0,255,65,0.4)]">
-                    <Terminal size={24} />
+                  <button onClick={() => setCurrentScreen('chat')} className="relative z-10 flex items-center justify-center size-10 md:size-12 rounded-xl bg-primary dark:bg-cyber-green text-white dark:text-black hover:scale-110 transition-transform shadow-[0_0_20px_rgba(0,255,65,0.4)] shrink-0 self-end md:self-center">
+                    <Terminal className="w-5 h-5 md:w-6 md:h-6" />
                   </button>
                 </div>
               ))
@@ -1313,50 +1380,50 @@ const SettingsScreen = ({
     return (
       <div className="relative min-h-screen w-full flex flex-col overflow-x-hidden bg-background-light dark:bg-background-dark transition-colors duration-300 circuit-bg">
         <div className="absolute inset-0 scanline pointer-events-none opacity-10"></div>
-        <header className="flex items-center justify-between border-b border-primary/20 dark:border-cyber-green/20 bg-white/80 dark:bg-black/60 backdrop-blur-md px-6 py-4 sticky top-0 z-50">
-          <div className="flex items-center gap-3">
-            <button onClick={() => setCurrentScreen('home')} className="p-2 bg-primary/10 dark:bg-cyber-green/10 rounded-lg border border-primary/20 dark:border-cyber-green/20">
-              <ArrowLeft className="text-primary dark:text-cyber-green" size={24} />
+        <header className="flex items-center justify-between border-b border-primary/20 dark:border-cyber-green/20 bg-white/80 dark:bg-black/60 backdrop-blur-md px-4 md:px-6 py-3 md:py-4 sticky top-0 z-50">
+          <div className="flex items-center gap-2 md:gap-3">
+            <button onClick={() => setCurrentScreen('home')} className="p-1.5 md:p-2 bg-primary/10 dark:bg-cyber-green/10 rounded-lg border border-primary/20 dark:border-cyber-green/20">
+              <ArrowLeft className="text-primary dark:text-cyber-green w-5 h-5 md:w-6 md:h-6" />
             </button>
             <div>
-              <h2 className="text-xl font-bold tracking-tight uppercase italic text-slate-900 dark:text-cyber-green">System <span className="text-primary">Settings</span></h2>
-              <p className="text-[10px] text-primary/60 dark:text-cyber-green/60 tracking-[0.2em] font-bold uppercase font-mono">CONFIGURATION INTERFACE V.4.0</p>
+              <h2 className="text-sm md:text-xl font-bold tracking-tight uppercase italic text-slate-900 dark:text-cyber-green">System <span className="text-primary">Settings</span></h2>
+              <p className="text-[8px] md:text-[10px] text-primary/60 dark:text-cyber-green/60 tracking-[0.1em] md:tracking-[0.2em] font-bold uppercase font-mono">CONFIGURATION INTERFACE V.4.0</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 md:gap-3">
             <button 
               onClick={handleSaveSettings}
               disabled={isSaving}
-              className="flex items-center gap-2 px-4 py-2 bg-primary dark:bg-cyber-green text-white dark:text-black rounded-lg font-bold text-[10px] uppercase tracking-widest shadow-[0_0_15px_rgba(0,255,65,0.3)] hover:scale-105 transition-all disabled:opacity-50"
+              className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 md:py-2 bg-primary dark:bg-cyber-green text-white dark:text-black rounded-lg font-bold text-[8px] md:text-[10px] uppercase tracking-widest shadow-[0_0_15px_rgba(0,255,65,0.3)] hover:scale-105 transition-all disabled:opacity-50"
             >
-              {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-              <span>{isSaving ? 'Syncing...' : 'Save Changes'}</span>
+              {isSaving ? <Loader2 className="animate-spin w-3 h-3 md:w-3.5 md:h-3.5" /> : <Check className="w-3 h-3 md:w-3.5 md:h-3.5" />}
+              <span>{isSaving ? 'Syncing...' : 'Save'}</span>
             </button>
           </div>
         </header>
         
-        <main className="flex-1 flex flex-col md:flex-row max-w-[1200px] mx-auto w-full p-6 lg:p-10 gap-8 z-10">
+        <main className="flex-1 flex flex-col md:flex-row max-w-[1200px] mx-auto w-full p-4 md:p-6 lg:p-10 gap-6 md:gap-8 z-10">
           {/* Sidebar Tabs */}
-          <aside className="w-full md:w-64 flex flex-col gap-2">
+          <aside className="w-full md:w-64 flex flex-row md:flex-col gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveSettingsTab(tab.id as any)}
                 className={cn(
-                  "flex items-center gap-3 px-4 py-3 rounded-xl border transition-all uppercase text-[10px] font-bold tracking-widest font-mono",
+                  "flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-3 rounded-xl border transition-all uppercase text-[8px] md:text-[10px] font-bold tracking-widest font-mono whitespace-nowrap md:whitespace-normal",
                   activeSettingsTab === tab.id 
                     ? "bg-primary/20 dark:bg-cyber-green/20 border-primary dark:border-cyber-green text-primary dark:text-cyber-green shadow-[0_0_15px_rgba(0,255,65,0.2)]" 
-                    : "bg-slate-100 dark:bg-black/40 border-slate-200 dark:border-cyber-green/10 text-slate-600 dark:text-cyber-green/40 hover:bg-slate-200 dark:hover:bg-black/60 hover:border-slate-300 dark:hover:border-cyber-green/30"
+                    : "bg-white/50 dark:bg-black/40 border-slate-200 dark:border-cyber-green/10 text-slate-500 dark:text-cyber-green/40 hover:bg-white/80 dark:hover:bg-black/60"
                 )}
               >
-                <tab.icon size={18} />
-                {tab.label}
+                <tab.icon className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                <span>{tab.label}</span>
               </button>
             ))}
           </aside>
 
           {/* Tab Content */}
-          <div className="flex-1 bg-white dark:bg-black/60 backdrop-blur-sm border border-slate-200 dark:border-cyber-green/20 rounded-2xl p-8 min-h-[500px] flex flex-col">
+          <div className="flex-1 bg-white dark:bg-black/60 backdrop-blur-sm border border-slate-200 dark:border-cyber-green/20 rounded-2xl p-4 md:p-8 min-h-[400px] md:min-h-[500px] flex flex-col">
             <div className="flex-1">
               <AnimatePresence mode="wait">
                 {activeSettingsTab === 'general' && (

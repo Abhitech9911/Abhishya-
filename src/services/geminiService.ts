@@ -92,6 +92,24 @@ export class GeminiService {
     return STANDARD_INSTRUCTION;
   }
 
+  private prepareHistory(history: { role: 'user' | 'assistant', content: string }[]) {
+    // Gemini history MUST start with a 'user' role.
+    // Our initial messages are often greetings from the 'assistant', so we skip them.
+    let processedHistory = [...history];
+    
+    // Skip leading assistant messages
+    while (processedHistory.length > 0 && processedHistory[0].role === 'assistant') {
+      processedHistory.shift();
+    }
+
+    // Ensure alternating roles and valid sequence
+    // Gemini expects: user, model, user, model...
+    return processedHistory.map(h => ({
+      role: h.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: h.content }]
+    }));
+  }
+
   async sendMessage(
     message: string, 
     history: { role: 'user' | 'assistant', content: string }[], 
@@ -109,10 +127,7 @@ export class GeminiService {
     const chat = this.ai.chats.create({
       model: "gemini-3-flash-preview",
       config,
-      history: history.map(h => ({
-        role: h.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: h.content }]
-      }))
+      history: this.prepareHistory(history)
     });
 
     const parts: any[] = [{ text: message }];
@@ -144,13 +159,11 @@ export class GeminiService {
     Example: ["Tell me more", "How does it work?", "Give an example"]`;
 
     try {
+      const preparedHistory = this.prepareHistory(history);
       const result = await this.ai.models.generateContent({
         model: "gemini-3-flash-preview",
         contents: [
-          ...history.map(h => ({
-            role: h.role === 'assistant' ? 'model' : 'user',
-            parts: [{ text: h.content }]
-          })),
+          ...preparedHistory,
           { role: 'user', parts: [{ text: prompt }] }
         ],
         config: {
@@ -194,10 +207,7 @@ export class GeminiService {
     const chat = this.ai.chats.create({
       model: "gemini-3-flash-preview",
       config,
-      history: history.map(h => ({
-        role: h.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: h.content }]
-      }))
+      history: this.prepareHistory(history)
     });
 
     const result = await chat.sendMessageStream({ message });

@@ -422,14 +422,15 @@ export default function App() {
           );
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error sending message:', error);
+      const errorMessage = error?.message || 'I apologize, but I encountered an error. Please try again.';
       setMessages((prev) => [
         ...prev,
         {
           id: Date.now().toString(),
           role: 'assistant',
-          content: 'I apologize, but I encountered an error. Please try again.',
+          content: errorMessage.includes('API_KEY') ? 'Error: GEMINI_API_KEY is missing or invalid.' : 'I apologize, but I encountered an error. Please try again.',
           timestamp: Date.now(),
         },
       ]);

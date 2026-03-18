@@ -80,7 +80,11 @@ export class GeminiService {
   private ai: GoogleGenAI;
 
   constructor() {
-    this.ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      console.error("GEMINI_API_KEY is missing. Please check your environment variables.");
+    }
+    this.ai = new GoogleGenAI({ apiKey: apiKey || "" });
   }
 
   private getInstruction(mode: ChatMode) {
